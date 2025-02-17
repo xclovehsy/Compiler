@@ -2,21 +2,34 @@ import os
 import re
 import tempfile
 import subprocess
+import llvmlite.binding as llvm
 
 
-compiler_gym_clang = "/root/.local/share/compiler_gym/llvm-v0/bin/clang"
+# compiler_gym_clang = "/root/.local/share/compiler_gym/llvm-v0/bin/clang"
 
 def count_llvm_ir_instructions(llvm_ir: str) -> int:
     """
     计算 LLVM-IR 代码中的指令数目。
     """
-    # 匹配 LLVM IR 指令的正则表达式
-    instruction_pattern = re.compile(r'^\s*(?:\%\d+\s*=\s*)?([a-zA-Z]+)\s', re.MULTILINE)
-    
-    instructions = [match.group(1) for match in instruction_pattern.finditer(llvm_ir)]
-    return len(instructions)
 
-def compile_c_to_llvm_ir(source, opt_flags=None, clang_path="/root/.local/share/compiler_gym/llvm-v0/bin/clang", opt_path="opt", llvm_dis_path="llvm-dis"):
+    llvm.initialize()
+    llvm.initialize_native_target()
+    llvm.initialize_native_asmprinter()
+
+    # 解析字符串中的LLVM IR
+    module = llvm.parse_assembly(llvm_ir)
+
+
+    # 计算指令数量
+    instruction_count = 0
+    for function in module.functions:
+        for block in function.blocks:
+            for instruction in block.instructions:  # 使用 .instructions 获取块中的指令
+                instruction_count += 1
+                
+    return instruction_count
+
+def compile_c_to_llvm_ir(source, opt_flags=None):
     """
     编译 C 代码到 LLVM IR，并应用优化选项，使用 .bc 进行中间存储。
 
@@ -48,8 +61,8 @@ def compile_c_to_llvm_ir(source, opt_flags=None, clang_path="/root/.local/share/
     try:
         # 生成 LLVM Bitcode (.bc)
         subprocess.run([
-            clang_path, 
-            "-c", 
+            'clang', 
+            "-S", 
             "-emit-llvm", 
             "-o", bc_file, 
             c_file, 
@@ -66,10 +79,10 @@ def compile_c_to_llvm_ir(source, opt_flags=None, clang_path="/root/.local/share/
         ], check=True)
 
         # 应用优化
-        subprocess.run([opt_path, *opt_flags, bc_file, "-o", opt_bc_file], check=True)
+        subprocess.run(["opt", *opt_flags, bc_file, "-o", opt_bc_file], check=True)
 
-        # 转换优化后的 Bitcode 为 LLVM IR (.ll)
-        subprocess.run([llvm_dis_path, opt_bc_file, "-o", opt_ll_file], check=True)
+        # 转换优化后的 Bitcode 为 LLVM IR (.ll) 反编译
+        subprocess.run(["llvm-dis", opt_bc_file, "-o", opt_ll_file], check=True)
 
         with open(opt_ll_file, "r") as f:
             llvm_ir = f.read()
