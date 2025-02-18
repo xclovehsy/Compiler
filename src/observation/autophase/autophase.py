@@ -3,7 +3,7 @@ import tempfile
 from typing import List
 from utils.system import run_executable
 
-def compute_instcount(source: str) -> List[int]:
+def compute_autophase(source: str) -> List[int]:
     # 创建临时目录
     temp_dir = tempfile.mkdtemp()
     if os.path.isfile(source):
@@ -13,7 +13,7 @@ def compute_instcount(source: str) -> List[int]:
         with open(ir_file, "w") as f:
             f.write(source)
 
-    executable_path = "src/observation/instcount/compute_ir_instruction_count_mac"  # 替换为实际的可执行文件路径
+    executable_path = "src/observation/autophase/compute_autophase_mac"  # 替换为实际的可执行文件路径
     args = [ir_file]
     output = run_executable(executable_path, args)
     
@@ -21,4 +21,5 @@ def compute_instcount(source: str) -> List[int]:
 
 
 if __name__ == '__main__':
-    print(compute_instcount('/Users/xucong/Desktop/Compiler/optimized.ll'))
+    print(compute_autophase('/Users/xucong/Desktop/Compiler/optimized.ll'))
+    

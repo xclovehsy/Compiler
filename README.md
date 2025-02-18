@@ -17,6 +17,9 @@ opt -adce -instcombine -simplifycfg -mem2reg input.bc -o output.bc
 sudo apt update
 sudo apt install llvm clang
 
+macos
+brew install llvm
+
 
 ProGraML依赖库
 安装 nlohmann/json.hpp
@@ -29,3 +32,7 @@ sudo apt install nlohmann-json3-dev
 g++ -o compute_autophase compute_autophase.cc InstCount.cc \
     $(llvm-config --cxxflags --ldflags --system-libs --libs core irreader support analysis transformutils) \
     -fno-rtti -std=c++14
+
+g++ -o compute_ir_instruction_count_mac compute_ir_instruction_count.cc InstCount.cc \
+    $(llvm-config --cxxflags --ldflags --system-libs --libs core irreader support analysis transformutils) \
+    -fno-rtti -std=c++17

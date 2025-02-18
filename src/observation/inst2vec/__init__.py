@@ -1,15 +1,12 @@
 """This module defines an API for processing LLVM-IR with inst2vec."""
+import os
 import pickle
+from .inst2vec_preprocess import *
+import numpy as np
 from typing import List
 
-import numpy as np
-
-import inst2vec_preprocess
-import runfiles_path
-
-
-vocab_path = "pickle/dictionary.pickle"
-embedding_path = "pickle/embeddings.pickle"
+vocab_path = "src/observation/inst2vec/pickle/dictionary.pickle"
+embedding_path = "src/observation/inst2vec/pickle/embeddings.pickle"
 
 
 class Inst2vecEncoder:
@@ -28,6 +25,10 @@ class Inst2vecEncoder:
 
     def preprocess(self, ir: str) -> List[str]:
         """Produce a list of pre-processed statements from an IR."""
+        if os.path.isfile(ir): # 如果输入文件路径
+            with open(ir, "r") as f:
+                ir = f.read()
+            
         lines = [[x] for x in ir.split("\n")]
         try:
             structs = inst2vec_preprocess.GetStructTypes(ir)
