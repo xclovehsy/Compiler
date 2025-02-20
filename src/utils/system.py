@@ -25,3 +25,12 @@ def run_executable(executable_path, args=None):
         print("Executable not found.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+
+def read_ir_from_file(ir_path):
+    """从文件中读取ir"""
+    
+    with open(ir_path, 'r') as f:
+        ir = f.read()
+
+    return ir

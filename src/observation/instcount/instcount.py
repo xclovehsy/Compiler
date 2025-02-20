@@ -13,7 +13,7 @@ def compute_instcount(source: str) -> List[int]:
         with open(ir_file, "w") as f:
             f.write(source)
 
-    executable_path = "src/observation/instcount/compute_ir_instruction_count_mac"  # 替换为实际的可执行文件路径
+    executable_path = "src/observation/instcount/compute_ir_instruction_count"  # 替换为实际的可执行文件路径
     args = [ir_file]
     output = run_executable(executable_path, args)
     
