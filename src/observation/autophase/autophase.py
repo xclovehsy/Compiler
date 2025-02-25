@@ -13,12 +13,11 @@ def compute_autophase(source: str) -> List[int]:
         with open(ir_file, "w") as f:
             f.write(source)
 
-    executable_path = "src/observation/autophase/compute_autophase"  # 替换为实际的可执行文件路径
+    executable_path = "src/observation/autophase/compute_autophase_mac"  # 替换为实际的可执行文件路径
     args = [ir_file]
     output = run_executable(executable_path, args)
     
     return [int(i) for i in output.split(' ')]
-    # return output
 
 
 if __name__ == '__main__':

@@ -1,10 +1,10 @@
 from observation.autophase import compute_autophase, AUTOPHASE_FEATURE_NAMES
 from observation.instcount import compute_instcount, INST_COUNT_FEATURE_DIMENSIONALITY
 from observation.inst2vec import Inst2vecEncoder
-import ir2vec
+# import ir2vec
 import numpy as np
-import torch
-import programl as pg
+# import torch
+# import programl as pg
 from utils.system import read_ir_from_file
 
 def test_autophase(ir_path):
@@ -22,31 +22,32 @@ def test_inst2vec(ir_path):
     embed_text = encoder.embed(encode_text)
     print(text, encode_text, embed_text)
 
-def test_ir2vec(ir_path):
-    initObj = ir2vec.initEmbedding(ir_path, "fa", "p")
-    progVector1 = ir2vec.getProgramVector(initObj)
-    functionVectorMap1 = ir2vec.getFunctionVectors(initObj)
-    instructionVectorsList1 = ir2vec.getInstructionVectors(initObj)
+# def test_ir2vec(ir_path):
+#     initObj = ir2vec.initEmbedding(ir_path, "fa", "p")
+#     progVector1 = ir2vec.getProgramVector(initObj)
+#     functionVectorMap1 = ir2vec.getFunctionVectors(initObj)
+#     instructionVectorsList1 = ir2vec.getInstructionVectors(initObj)
 
-    print(np.array(progVector1).shape)
-    print([key for key, value in functionVectorMap1.items()])
-    print(np.array(instructionVectorsList1).shape)
+#     print(np.array(progVector1).shape)
+#     print([key for key, value in functionVectorMap1.items()])
+#     print(np.array(instructionVectorsList1).shape)
 
-def test_programl(ir_path):
-    ir = read_ir_from_file(ir_path)
-    # programl目前只支持llvm版本 3.8.0, 6.0.0, 10.0.0 语法 当前llvm版本14.0.0
-    G = pg.from_llvm_ir(ir)
-    pg.to_networkx(G)
-    pg.save_graphs('file.data', [G])
+# def test_programl(ir_path):
+#     ir = read_ir_from_file(ir_path)
+#     # programl目前只支持llvm版本 3.8.0, 6.0.0, 10.0.0 语法 当前llvm版本14.0.0
+#     G = pg.from_llvm_ir(ir)
+#     pg.to_networkx(G)
+#     pg.save_graphs('file.data', [G])
     
 
 if __name__ == '__main__':
-    ir_path = '/root/Compiler/optimized.ll'
-    # test_autophase(ir_path)
-    # test_instcount(ir_path)
-    # test_inst2vec(ir_path)
+    # ir_path = '/root/Compiler/optimized.ll'
+    ir_path = '/Users/xucong/Desktop/Compiler/optimized.ll'
+    test_autophase(ir_path)
+    test_instcount(ir_path)
+    test_inst2vec(ir_path)
     # test_ir2vec(ir_path)
-    test_programl(ir_path)
+    # test_programl(ir_path)
     
 
     
