@@ -88,9 +88,9 @@ def compile_c_to_llvm_ir(source, opt_flags=None):
         llvm_ir = ""
 
     finally:
-        os.remove(bc_file)
-        os.remove(opt_bc_file)
-        os.remove(opt_ll_file)
+        # os.remove(bc_file)
+        # os.remove(opt_bc_file)
+        # os.remove(opt_ll_file)
         if not os.path.isfile(source):
             os.remove(c_file)
 

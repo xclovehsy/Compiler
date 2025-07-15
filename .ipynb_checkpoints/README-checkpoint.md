@@ -36,8 +36,3 @@ g++ -o compute_autophase compute_autophase.cc InstCount.cc \
 g++ -o compute_ir_instruction_count_mac compute_ir_instruction_count.cc InstCount.cc \
     $(llvm-config --cxxflags --ldflags --system-libs --libs core irreader support analysis transformutils) \
     -fno-rtti -std=c++17
-
-sudo apt update
-sudo apt install aria2
-export HF_ENDPOINT=https://hf-mirror.com
-./hfd.sh bert-base-uncased
