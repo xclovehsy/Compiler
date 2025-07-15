@@ -84,3 +84,53 @@ trainer.train()
 # 保存模型
 model.save_pretrained("./encoder-decoder-clm-trained")
 tokenizer.save_pretrained("./encoder-decoder-clm-trained")
+
+
+# 使用不同的学习率 --------------------
+
+from transformers import AdamW, Trainer, TrainingArguments
+from transformers import EncoderDecoderModel
+
+model = EncoderDecoderModel.from_encoder_decoder_pretrained('bert-base-uncased', 'gpt2')
+
+# 查看参数名字，确认encoder和decoder的区分
+for name, param in model.named_parameters():
+    print(name)  # 方便确认哪个属于encoder，哪个属于decoder
+
+# 给encoder和decoder分别组建参数列表
+encoder_params = []
+decoder_params = []
+
+for name, param in model.named_parameters():
+    if name.startswith("encoder"):
+        encoder_params.append(param)
+    elif name.startswith("decoder"):
+        decoder_params.append(param)
+    else:
+        # 其他参数，如lm_head，放到decoder组或者分开也可以
+        decoder_params.append(param)
+
+# 定义参数组并指定不同LR
+optimizer_grouped_parameters = [
+    {"params": encoder_params, "lr": 5e-5},  # encoder较小学习率
+    {"params": decoder_params, "lr": 1e-4},  # decoder较大学习率
+]
+
+optimizer = AdamW(optimizer_grouped_parameters)
+
+# 定义训练参数
+training_args = TrainingArguments(
+    output_dir="./output",
+    num_train_epochs=3,
+    per_device_train_batch_size=8,
+)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    optimizers=(optimizer, None),  # 手动传入optimizer，scheduler可以传None或自定义
+    train_dataset=...,  # 你的数据集
+    eval_dataset=...,   # 你的验证集
+)
+
+trainer.train()
