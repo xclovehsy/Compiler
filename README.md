@@ -41,3 +41,6 @@ sudo apt update
 sudo apt install aria2
 export HF_ENDPOINT=https://hf-mirror.com
 ./hfd.sh bert-base-uncased
+
+modernbert
+https://huggingface.co/answerdotai/ModernBERT-base
