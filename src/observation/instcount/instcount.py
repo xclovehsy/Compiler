@@ -1,7 +1,7 @@
 import os
 import tempfile
 from typing import List
-from utils.system import run_executable
+from src.utils.system import run_executable
 
 def compute_instcount(source: str) -> List[int]:
     # 创建临时目录

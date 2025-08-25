@@ -44,3 +44,36 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 modernbert
 https://huggingface.co/answerdotai/ModernBERT-base
+
+
+llvm18 路径
+/home/xucong24/llvm11-18/install-llvm18.1.8/bin
+
+
+
+# 一定要使用llvm14！！！！！！！！ llvm15的透明指针机制会导致无法统计指针条数
+安装llvm14 
+apt-cache show llvm-14  # 查看llvm15版本
+sudo apt update
+sudo apt install llvm-14 clang-14
+llvm15路径：  /usr/lib/llvm-14/bin/
+（添加到环境变量）
+export PATH=/usr/lib/llvm-14/bin:$PATH
+source ~/.zshrc
+
+
+CompilerGym使用的是llvm10
+/home/xucong24/.local/share/compiler_gym/llvm-v0/bin
+
+
+/home/xucong24/.local/share/compiler_gym/llvm-v0/bin/opt -analyze -passes=instcount /home/xucong24/Compiler/tmp/optimized.bc
+
+
+ComPile数据集使用LLVM18.0.0git编译， 使用inst2vec会造成大量的unk-token
+
+/home/xucong24/Compiler/datasets/poj104/ir_test/1/24.ll 
+原始IR指令行数： 232
+使用ModernBert的fastbpetokenizer 编码token长度3725
+使用Inst2vec编码token长度173其中有42unk-token 大约在25%左右
+
+使用模块化运行 python -m src.data.convert_poj104_inst2vec

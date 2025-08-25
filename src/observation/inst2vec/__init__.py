@@ -60,7 +60,6 @@ class Inst2vecEncoder:
         """Produce a matrix of embeddings from a list of encoded statements."""
         return np.vstack([self.embeddings[index] for index in encoded])
 
-
 if __name__ == "__main__":
 
     llvm_ir = r"""

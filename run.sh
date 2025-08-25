@@ -1,1 +1,1 @@
-python3 src/main.py
+python -m src.llvm_opt_gen_train --config yaml/llvm_opt_gen_train.yaml
