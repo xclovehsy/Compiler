@@ -77,3 +77,7 @@ ComPile数据集使用LLVM18.0.0git编译， 使用inst2vec会造成大量的unk
 使用Inst2vec编码token长度173其中有42unk-token 大约在25%左右
 
 使用模块化运行 python -m src.data.convert_poj104_inst2vec
+
+1. Inst2VecTokenizer适配huggingface接口
+2. 使用DataCollatorForLanguageModeling随机掩码
+3. 调整训练代码，ModernBert模型调整Embedding层和输出层vocab_size

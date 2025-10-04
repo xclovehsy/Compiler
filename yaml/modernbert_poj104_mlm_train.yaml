@@ -1,13 +1,12 @@
 model:
   model_id: /home/xucong24/Compiler/checkpoints/ModernBERT-base
-  tokenizer_id: /home/xucong24/Compiler/checkpoints/Inst2VecTokenizer
 
 data:
-  data_dir: /home/xucong24/Compiler/datasets/POJ104TokenizedDataset
+  data_dir: /home/xucong24/Compiler/datasets/POJ104Dataset
   max_length: 512
 
 output:
-  base_work_dir: /home/xucong24/Compiler/work_dirs/inst2vec_poj104_modernbert
+  base_work_dir: /home/xucong24/Compiler/work_dirs/modernbert_poj104_mlm_train
 
 mlm:
   mlm_probability: 0.3

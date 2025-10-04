@@ -29,7 +29,7 @@ import re
 from typing import Dict
 
 import networkx as nx
-import src.model.rgx_utils as rgx
+from . import rgx_utils as rgx
 
 
 ########################################################################################################################
