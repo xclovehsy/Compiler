@@ -1,22 +1,27 @@
+"""Tokenizers for LLVM IR processing."""
 import os
 import json
 import torch
 import csv
-import numpy as np
-from typing import List, Optional
 import pickle
-from .inst2vec_preprocess import *
+from typing import List, Optional
 
-# from transformers import PreTrainedTokenizerBase
+from .inst2vec.preprocess import preprocess, GetStructTypes, PreprocessStatement
+
 
 class Inst2VecTokenizer:
-    def __init__(self, vocab, 
-                 unk_token="<unk>", 
-                 pad_token="<pad>", 
-                 bos_token="<bos>", 
-                 eos_token="<eos>", 
-                 mask_token="<mask>", 
-                 **kwargs):
+    """A tokenizer for LLVM IR using inst2vec preprocessing."""
+    
+    def __init__(
+        self, 
+        vocab, 
+        unk_token="<unk>", 
+        pad_token="<pad>", 
+        bos_token="<bos>", 
+        eos_token="<eos>", 
+        mask_token="<mask>", 
+        **kwargs
+    ):
         self.vocab = vocab
         self.ids_to_tokens = {v: k for k, v in vocab.items()}
 
@@ -40,9 +45,6 @@ class Inst2VecTokenizer:
         self.cls_token_id = self.bos_token_id
         self.sep_token_id = self.eos_token_id
         
-    # -----------------------------
-    # 必要属性
-    # -----------------------------
     @property
     def vocab_size(self):
         return len(self.vocab)
@@ -53,9 +55,6 @@ class Inst2VecTokenizer:
     def __len__(self):
         return self.vocab_size
     
-    # -----------------------------
-    # Token <-> ID
-    # -----------------------------
     def _tokenize(self, ir: str) -> List[str]:
         """Produce a list of pre-processed statements from an IR."""
         if os.path.isfile(ir):
@@ -84,25 +83,29 @@ class Inst2VecTokenizer:
     def _convert_id_to_token(self, index: int) -> str:
         return self.ids_to_tokens.get(index, self.unk_token)
 
-
-    # -----------------------------
-    # Encode / Decode
-    # -----------------------------
-    def encode(self, llvm: str, max_length: Optional[int] = None, truncation=True, padding=True, return_tensors="pt"):
+    def encode(
+        self, 
+        llvm: str, 
+        max_length: Optional[int] = None, 
+        truncation=True, 
+        padding=True, 
+        return_tensors="pt"
+    ):
+        """Encode LLVM IR to token ids."""
         tokens = self._tokenize(llvm)
-        token_ids =  [self._convert_token_to_id(t) for t in tokens]
+        token_ids = [self._convert_token_to_id(t) for t in tokens]
 
         token_ids = [self.bos_token_id] + token_ids + [self.eos_token_id]
 
         if truncation and max_length is not None:
             token_ids = token_ids[:max_length]
 
-        attention_mask = [1]*len(token_ids)
+        attention_mask = [1] * len(token_ids)
 
         if padding and max_length is not None and len(token_ids) < max_length:
             pad_len = max_length - len(token_ids)
-            token_ids += [self.pad_token_id]*pad_len
-            attention_mask += [0]*pad_len
+            token_ids += [self.pad_token_id] * pad_len
+            attention_mask += [0] * pad_len
             
         if return_tensors == "pt":
             token_ids = torch.tensor(token_ids, dtype=torch.long)
@@ -113,8 +116,8 @@ class Inst2VecTokenizer:
             "attention_mask": attention_mask,
         }
 
-
     def decode(self, token_ids: torch.Tensor, skip_special_tokens=True) -> str:
+        """Decode token ids back to text."""
         assert token_ids.ndim == 1
         token_ids = token_ids.tolist()
 
@@ -128,6 +131,7 @@ class Inst2VecTokenizer:
         return '\n'.join(tokens)
     
     def batch_decode(self, token_ids: torch.Tensor, **kwargs) -> List[str]:
+        """Decode a batch of token ids."""
         assert token_ids.ndim <= 2
 
         if token_ids.ndim == 1:
@@ -135,32 +139,27 @@ class Inst2VecTokenizer:
         else:
             return [self.decode(ids, **kwargs) for ids in token_ids]
         
-        
     def pad(self, encoded_inputs, max_length=None, padding=True, return_tensors="pt", **kwargs):
-        # encoded_inputs: list[dict]  (batch)
+        """Pad encoded inputs to the same length."""
         if isinstance(encoded_inputs, list):
-            # 提取每个样本的 input_ids
             input_ids_list = [e["input_ids"] for e in encoded_inputs]
         else:
             input_ids_list = encoded_inputs["input_ids"]
 
-        # 把所有 input_ids 转成 list[int]
         normed_ids_list = []
         for ids in input_ids_list:
             if isinstance(ids, list):
                 normed_ids_list.append(ids)
-            elif hasattr(ids, "tolist"):  # torch.Tensor or numpy
+            elif hasattr(ids, "tolist"):
                 normed_ids_list.append(ids.tolist())
             else:
                 raise TypeError(f"Unsupported type for input_ids: {type(ids)}")
 
-        # 找出最大长度
         if max_length is None:
             max_len = max(len(ids) for ids in normed_ids_list)
         else:
             max_len = max_length
 
-        # padding
         padded_ids = []
         attention_masks = []
         for ids in normed_ids_list:
@@ -169,7 +168,6 @@ class Inst2VecTokenizer:
             attention_masks.append([1] * len(ids) + [0] * pad_len)
 
         if return_tensors == "pt":
-            import torch
             padded_ids = torch.tensor(padded_ids, dtype=torch.long)
             attention_masks = torch.tensor(attention_masks, dtype=torch.long)
 
@@ -179,31 +177,22 @@ class Inst2VecTokenizer:
         }
         
     def get_special_tokens_mask(self, token_ids, already_has_special_tokens=False):
-        """
-        token_ids: list[int] / list[list[int]] / torch.Tensor
-        返回: 同结构的 mask, 1 表示特殊 token, 0 表示普通 token
-        """
+        """Get mask for special tokens."""
         if isinstance(token_ids, torch.Tensor):
             token_ids = token_ids.tolist()
 
         if len(token_ids) == 0:
             return []
 
+        special_ids = {self.pad_token_id, self.bos_token_id, self.eos_token_id, self.mask_token_id}
+        
         if isinstance(token_ids[0], list):
-            return [
-                [1 if t in {self.pad_token_id, self.bos_token_id, self.eos_token_id, self.mask_token_id} else 0
-                for t in seq]
-                for seq in token_ids
-            ]
+            return [[1 if t in special_ids else 0 for t in seq] for seq in token_ids]
         else:
-            return [1 if t in {self.pad_token_id, self.bos_token_id, self.eos_token_id, self.mask_token_id} else 0
-                    for t in token_ids]
+            return [1 if t in special_ids else 0 for t in token_ids]
             
     def convert_tokens_to_ids(self, tokens):
-        """
-        tokens: str 或 list[str]
-        返回: int 或 list[int]
-        """
+        """Convert tokens to ids."""
         if isinstance(tokens, str):
             return self._convert_token_to_id(tokens)
         elif isinstance(tokens, list):
@@ -212,6 +201,7 @@ class Inst2VecTokenizer:
             raise TypeError(f"Unsupported type for convert_tokens_to_ids: {type(tokens)}")
 
     def convert_ids_to_tokens(self, ids):
+        """Convert ids to tokens."""
         if isinstance(ids, int):
             return self._convert_id_to_token(ids)
         elif isinstance(ids, list):
@@ -219,8 +209,8 @@ class Inst2VecTokenizer:
         else:
             raise TypeError(f"Unsupported type for convert_ids_to_tokens: {type(ids)}")
 
-
     def save_vocabulary(self, save_directory):
+        """Save vocabulary to directory."""
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
         vocab_file = os.path.join(save_directory, "dictionary.pickle")
@@ -229,6 +219,7 @@ class Inst2VecTokenizer:
         return (vocab_file,)
     
     def save_pretrained(self, save_directory):
+        """Save tokenizer to directory."""
         files = self.save_vocabulary(save_directory)
         config = {
             "unk_token": self.unk_token,
@@ -244,6 +235,7 @@ class Inst2VecTokenizer:
 
     @classmethod
     def from_pretrained(cls, pretrained_path, **kwargs):
+        """Load tokenizer from pretrained directory."""
         vocab_file = os.path.join(pretrained_path, "dictionary.pickle")
         config_path = os.path.join(pretrained_path, "tokenizer_config.json")
 
@@ -258,9 +250,10 @@ class Inst2VecTokenizer:
         return cls(vocab, **config)
     
     def __call__(self, text, **kwargs):
+        """Encode text (single or batch)."""
         if isinstance(text, (list, tuple)):
             tmp = [self.encode(t, **kwargs) for t in text]
-            input_ids = torch.stack([t['input_ids'] for t in tmp], dim=0)  # 使用stack而不是cat
+            input_ids = torch.stack([t['input_ids'] for t in tmp], dim=0)
             attention_mask = torch.stack([t['attention_mask'] for t in tmp], dim=0)
             return {
                 "input_ids": input_ids,
@@ -269,8 +262,19 @@ class Inst2VecTokenizer:
         else:
             return self.encode(text, **kwargs)
 
+
 class OptiSeqTokenizer:
-    def __init__(self, vocab, unk_token="<unk>", pad_token="<pad>", bos_token="<bos>", eos_token="<eos>", **kwargs):
+    """A tokenizer for optimization sequences."""
+    
+    def __init__(
+        self, 
+        vocab, 
+        unk_token="<unk>", 
+        pad_token="<pad>", 
+        bos_token="<bos>", 
+        eos_token="<eos>", 
+        **kwargs
+    ):
         self.vocab = vocab
         self.ids_to_tokens = {v: k for k, v in vocab.items()}
 
@@ -299,7 +303,14 @@ class OptiSeqTokenizer:
     def _convert_id_to_token(self, index: int) -> str:
         return self.ids_to_tokens.get(index, self.unk_token)
 
-    def encode(self, text: str, max_length: Optional[int] = None, truncation=True, padding=False):
+    def encode(
+        self, 
+        text: str, 
+        max_length: Optional[int] = None, 
+        truncation=True, 
+        padding=False
+    ):
+        """Encode text to token ids."""
         tokens = self._tokenize(text)
         token_ids = [self._convert_token_to_id(t) for t in tokens]
 
@@ -308,12 +319,12 @@ class OptiSeqTokenizer:
         if truncation and max_length is not None:
             token_ids = token_ids[:max_length]
 
-        attention_mask = [1]*len(token_ids)
+        attention_mask = [1] * len(token_ids)
 
         if padding and max_length is not None and len(token_ids) < max_length:
             pad_len = max_length - len(token_ids)
-            token_ids += [self.pad_token_id]*pad_len
-            attention_mask += [0]*pad_len
+            token_ids += [self.pad_token_id] * pad_len
+            attention_mask += [0] * pad_len
 
         return {
             "input_ids": torch.tensor([token_ids], dtype=torch.long),
@@ -321,6 +332,7 @@ class OptiSeqTokenizer:
         }
 
     def decode(self, token_ids: torch.Tensor, skip_special_tokens=True) -> str:
+        """Decode token ids back to text."""
         assert token_ids.ndim == 1
         token_ids = token_ids.tolist()
 
@@ -334,6 +346,7 @@ class OptiSeqTokenizer:
         return " ".join(tokens)
     
     def batch_decode(self, token_ids: torch.Tensor, **kwargs) -> List[str]:
+        """Decode a batch of token ids."""
         assert token_ids.ndim <= 2
 
         if token_ids.ndim == 1:
@@ -342,16 +355,18 @@ class OptiSeqTokenizer:
             return [self.decode(ids, **kwargs) for ids in token_ids]
 
     def save_vocabulary(self, save_directory):
+        """Save vocabulary to directory."""
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
         vocab_file = os.path.join(save_directory, "vocab.txt")
         with open(vocab_file, "w", encoding="utf-8") as f:
             writer = csv.writer(f)
-            for token, idx in sorted(self.vocab.items(), key=lambda x:x[1]):
+            for token, idx in sorted(self.vocab.items(), key=lambda x: x[1]):
                 writer.writerow([idx, token])
         return (vocab_file,)
     
     def save_pretrained(self, save_directory):
+        """Save tokenizer to directory."""
         files = self.save_vocabulary(save_directory)
         config = {
             "unk_token": self.unk_token,
@@ -366,6 +381,7 @@ class OptiSeqTokenizer:
 
     @classmethod
     def from_pretrained(cls, pretrained_path, **kwargs):
+        """Load tokenizer from pretrained directory."""
         vocab_file = os.path.join(pretrained_path, "vocab.txt")
         vocab = {}
         with open(vocab_file, "r", encoding="utf-8") as f:
@@ -381,8 +397,8 @@ class OptiSeqTokenizer:
         return cls(vocab, **config)
     
     def __call__(self, text, **kwargs):
+        """Encode text (single or batch)."""
         if isinstance(text, (list, tuple)):
-            # return [self.encode(t, **kwargs) for t in text]
             tmp = [self.encode(t, **kwargs) for t in text]
             input_ids = torch.cat([t['input_ids'] for t in tmp], dim=0)
             attention_mask = torch.cat([t['attention_mask'] for t in tmp], dim=0)
@@ -393,38 +409,3 @@ class OptiSeqTokenizer:
         else:
             return self.encode(text, **kwargs)
 
-
-
-
-if __name__ == '__main__':
-    # test Inst2VecTokenizer
-    tokenizer_path = '/home/xucong24/Compiler/checkpoints/Inst2VecTokenizer'
-    tokenizer = Inst2VecTokenizer.from_pretrained(tokenizer_path)
-    with open('/home/xucong24/Compiler/datasets/poj104/ir_test/1/24.ll', 'r') as f:
-        llvm = f.read()
-    llvms = [llvm, llvm, llvm]
-    encoding = tokenizer(
-        llvms, 
-        max_length=512, 
-        truncation=True,
-        padding=True
-    )
-    print(encoding)
-    print(tokenizer.decode(encoding['input_ids'][0]))
-    print((encoding['input_ids'][0] == tokenizer.unk_token_id).sum().item())
-    print((encoding['attention_mask'][0] == 1).sum().item())
-    # test OptiSeqTokenizer
-    # tokenizer_path = '/home/xucong24/Compiler/checkpoints/OptiSeqTokenizer'
-    # tokenizer = OptiSeqTokenizer.from_pretrained(tokenizer_path)
-    # opt = [
-    #     '-adce -alignment-from-assumptions -loop-unroll',
-    #     '-adce -alignment-from-assumptions -alignment-from-assumptions'
-    # ]
-    # encoding = tokenizer(
-    #     opt,
-    #     truncation=True,
-    #     max_length=10,
-    #     padding=True
-    # )
-    # print(encoding)
-    # print(tokenizer.decode(encoding['input_ids'][0]))

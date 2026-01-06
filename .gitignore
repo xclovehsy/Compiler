@@ -19,10 +19,14 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
 
 # Installer logs
 pip-log.txt
@@ -46,23 +50,14 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -74,55 +69,35 @@ ipython_config.py
 # pyenv
 .python-version
 
-# pipenv
-pipenv.lock
-
-# poetry
-poetry.lock
-
-# PEP 582; used by e.g. python-pdm
-__pypackages__/
-
-# virtualenv
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyderworkspace
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# VS Code settings (optional)
-.vscode/
-
-# JetBrains IDEs (e.g. PyCharm)
+# IDEs
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-datasets/
+# LLVM/Compiler specific
+*.bc
+*.ll
+*.o
+*.s
+tmp/
+*.pickle
+
+# Output directories
 output/
-.ipynb_checkpoints/
-work_dirs/
 checkpoints/
-.venv/
+logs/
+nohup.out
+
+# Data directories (usually too large to commit)
+datasets/
+
+# Platform specific
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
