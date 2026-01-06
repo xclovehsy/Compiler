@@ -7,7 +7,7 @@ data:
   max_length: 512
 
 output:
-  base_work_dir: /home/xucong24/Compiler/work_dirs/inst2vec_poj104_modernbert
+  base_work_dir: /home/xucong24/Compiler/work_dirs/instbert_poj104_mlm
 
 mlm:
   mlm_probability: 0.3
@@ -27,4 +27,4 @@ training_args:
   warmup_steps: 500
   weight_decay: 0.01
   report_to: tensorboard
-  overwrite_output_dir: true
+  overwrite_output_dir: false

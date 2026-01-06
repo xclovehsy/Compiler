@@ -8,4 +8,4 @@
 # python -m src.experiments.modernbert_classifyapp_inst2vec
 
 # modernbert poj104 mlm train
-python -m src.modernbert_mlm_train --config /home/xucong24/Compiler/yaml/modernbert_poj104_mlm_train.yaml
+python -m src.training.pretrain.instbert_mlm --config configs/instbert_poj104_mlm.yaml
