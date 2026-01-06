@@ -95,6 +95,7 @@ datasets/
 *.log
 
 work_dirs/
+work_dirs.bak/
 
 # Platform specific
 .DS_Store
