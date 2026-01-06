@@ -7,5 +7,5 @@
 # inst2vec_modernbert poj104 classify 
 # python -m src.experiments.modernbert_classifyapp_inst2vec
 
-# modernbert poj104 mlm train
-python -m src.training.pretrain.instbert_mlm --config configs/instbert_poj104_mlm.yaml
+# inst2vec_modernbert poj104 mlm train
+python -m src.training.instbert_mlm_trainer --config /home/xucong24/Compiler/configs/instbert_poj104_mlm.yaml
