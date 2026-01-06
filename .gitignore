@@ -92,6 +92,9 @@ nohup.out
 
 # Data directories (usually too large to commit)
 datasets/
+*.log
+
+work_dirs/
 
 # Platform specific
 .DS_Store
