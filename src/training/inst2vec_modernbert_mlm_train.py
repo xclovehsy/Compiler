@@ -5,7 +5,7 @@ from typing import Dict, Any
 from transformers import AutoModelForMaskedLM
 
 from src.training.base_trainer import BaseMLMTrainer, parse_args
-from src.core.inst2vec import Inst2VecTokenizer
+from src.model import Inst2VecTokenizer
 
 
 class Inst2VecModernBertMLMTrainer(BaseMLMTrainer):

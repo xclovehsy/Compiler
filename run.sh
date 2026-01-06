@@ -1,3 +1,6 @@
+# test inst2vec tokenizer
+# python -m src.tests.test_inst2vec_tokenizer
+
 # python -m src.llvm_opt_gen_train --config yaml/llvm_opt_gen_train.yaml
 # python -m src.inst2vec_bert_mlm_train --config /home/xucong24/Compiler/yaml/inst2vec_poj104_modernbert_train.yaml
 

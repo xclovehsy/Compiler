@@ -1,19 +1,19 @@
 import torch
 from transformers import DataCollatorForLanguageModeling
-from src.core.inst2vec import Inst2VecTokenizer
+from src.model import Inst2VecTokenizer
 
-tokenizer_id = "/home/xucong24/Compiler/checkpoints/Inst2VecTokenizer"
+tokenizer_id = "checkpoints/Inst2VecTokenizer"
 
 # 初始化 tokenizer
 tokenizer = Inst2VecTokenizer.from_pretrained(tokenizer_id)
 
 # ====== 2. 编码解码测试 ======
-with open('/home/xucong24/Compiler/datasets/poj104/ir_test/1/24.ll', 'r') as f:
+with open('tmp/37902.ll', 'r') as f:
         llvm = f.read()
 encoded = tokenizer(llvm, max_length=100, padding=True)
 print("Encoded:", encoded)
 
-decoded = tokenizer.decode(encoded["input_ids"][0])
+decoded = tokenizer.decode(encoded["input_ids"])
 print("Decoded:", decoded)
 
 # ====== 3. 测试 DataCollatorForLanguageModeling ======

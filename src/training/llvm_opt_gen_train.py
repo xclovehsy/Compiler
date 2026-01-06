@@ -16,7 +16,7 @@ from datasets import load_from_disk
 
 from src.config import load_config
 from src.utils.utils import get_logger
-from src.core.inst2vec import OptiSeqTokenizer
+from src.model import OptiSeqTokenizer
 
 
 def parse_args():
