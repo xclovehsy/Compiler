@@ -68,45 +68,45 @@ class OptSeqGenTrainer(BaseTrainer):
         
         self.logger.info("Encoder-decoder model built successfully")
     
-    def tokenize_function(self, examples) -> Dict[str, Any]:
-        """Tokenize examples for optimization sequence generation."""
+    def tokenize_function(self, example) -> Dict[str, Any]:
+        """Tokenize a single example."""
         encoder_maxlen = self.cfg.get("data.encoder_maxlen", 512)
         decoder_maxlen = self.cfg.get("data.decoder_maxlen", 128)
         input_column = self.cfg.get("data.input_column", "LLVM_IR")
         target_column = self.cfg.get("data.target_column", "Commandline")
         
-        # Tokenize encoder input
+        # Tokenize encoder input (单条数据)
         encoder_outputs = self.encoder_tokenizer(
-            examples[input_column],
+            example[input_column],
             truncation=True,
             padding="max_length",
             max_length=encoder_maxlen,
             return_tensors='pt'
         )
         
-        # Tokenize decoder target
+        # Tokenize decoder target (单条数据)
         decoder_outputs = self.decoder_tokenizer(
-            examples[target_column],
+            example[target_column],
             truncation=True,
             padding="max_length",
             max_length=decoder_maxlen,
         )
         
         return {
-            'input_ids': encoder_outputs.input_ids,
-            'attention_mask': encoder_outputs.attention_mask,
-            'labels': decoder_outputs['input_ids']
+            'input_ids': encoder_outputs['input_ids'].squeeze(0),
+            'attention_mask': encoder_outputs['attention_mask'].squeeze(0),
+            'labels': decoder_outputs['input_ids'].squeeze(0)
         }
     
     def tokenize_dataset(self, remove_columns: Optional[list] = None, **kwargs):
         """Tokenize the dataset."""
         self.logger.info("Tokenizing dataset")
         
-        map_kwargs = {"batched": kwargs.get("batched", True)}
+        # 注意：由于 tokenizer 返回 PyTorch tensors，不能使用多进程
+        # 使用 batched=False 逐条处理
+        map_kwargs = {"batched": False}
         if remove_columns:
             map_kwargs["remove_columns"] = remove_columns
-        if "num_proc" in kwargs:
-            map_kwargs["num_proc"] = kwargs["num_proc"]
         
         self.tokenized_data = self.dataset.map(self.tokenize_function, **map_kwargs)
         self.logger.info("Tokenization finished")
