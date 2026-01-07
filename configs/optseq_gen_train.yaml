@@ -1,0 +1,66 @@
+# Optimization Sequence Generation Training Configuration
+# 用于训练 Encoder-Decoder 模型（LLVM IR -> 优化序列）
+
+model:
+  # Encoder 配置
+  encoder_id: /home/xucong24/Compiler/work_dirs/instbert_poj104_mlm/20260106_152024/checkpoint-27672          # 预训练的 encoder 模型路径
+  encoder_tokenizer_id: /home/xucong24/Compiler/checkpoints/Inst2VecTokenizer
+  
+  # Decoder 配置
+  decoder_tokenizer_id: /home/xucong24/Compiler/checkpoints/OptiSeqTokenizer                  # optiseq 或 auto
+
+data:
+  data_dir: /path/to/dataset
+  encoder_maxlen: 512
+  decoder_maxlen: 128
+  input_column: LLVM_IR                               # 输入列名
+  target_column: Commandline                          # 目标列名
+  remove_columns:                                     # 训练时移除的列
+    - Benchmark
+    - CpuInfo
+    - IrInstructionCountO0
+    - IrInstructionCountO3
+    - IrInstructionCountOz
+    - InstCount
+    - Autophase
+    - Reward
+    - LLVM_IR
+    - Commandline
+
+output:
+  base_work_dir: /path/to/work_dirs/optseq_gen
+
+# GPT-2 Decoder 配置
+gpt2_config:
+  vocab_size: 128                 # 会被 decoder tokenizer 的 vocab_size 覆盖
+  n_positions: 512                # 最大位置编码长度
+  n_embd: 768                     # 嵌入维度
+  n_layer: 6                      # Transformer 层数
+  n_head: 12                      # 注意力头数
+  activation_function: gelu_new
+  resid_pdrop: 0.1
+  embd_pdrop: 0.1
+  attn_pdrop: 0.1
+  layer_norm_epsilon: 1e-05
+  initializer_range: 0.02
+  scale_attn_weights: true
+  use_cache: true
+  add_cross_attention: true       # 必须为 true，启用交叉注意力
+
+training_args:
+  num_train_epochs: 50
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  gradient_accumulation_steps: 2
+  eval_strategy: epoch
+  save_strategy: epoch
+  save_total_limit: 2
+  load_best_model_at_end: true
+  logging_strategy: steps
+  logging_steps: 100
+  learning_rate: 5e-5
+  warmup_steps: 500
+  weight_decay: 0.01
+  report_to: tensorboard
+  overwrite_output_dir: false
+
