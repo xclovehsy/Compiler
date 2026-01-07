@@ -293,6 +293,9 @@ class OptiSeqTokenizer:
     
     def get_vocab_size(self):
         return len(self.vocab)
+    
+    def __len__(self):
+        return len(self.vocab)
 
     def _tokenize(self, text: str) -> List[str]:
         return text.strip().split()
