@@ -1,110 +1,143 @@
+"""InstBERT MLM (Masked Language Model) training script."""
 import os
-from typing import Optional, Dict, Any
+import argparse
+from datetime import datetime
 
-from transformers import AutoModelForMaskedLM, Trainer, TrainingArguments, DataCollatorForLanguageModeling
+from transformers import (
+    AutoModelForMaskedLM,
+    Trainer,
+    TrainingArguments,
+    DataCollatorForLanguageModeling
+)
+from datasets import load_from_disk
 
-from src.training.base_trainer import BaseTrainer, parse_args
+from src.config import load_config
+from src.utils.utils import get_logger
 from src.model import Inst2VecTokenizer
 
 
-class InstBertMLMTrainer(BaseTrainer):
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config", type=str, required=True,
+        help="Path to the YAML config file"
+    )
+    return parser.parse_args()
+
+
+def get_model_and_tokenizer(cfg, logger):
+    """Load model and tokenizer, resize embeddings and sync special token ids."""
+    model_id = cfg["model"]["model_id"]
+    tokenizer_id = cfg["model"]["tokenizer_id"]
     
-    def __init__(self, config_path: str):
-        super().__init__(config_path)
-        self.tokenized_data = None
+    # Load tokenizer
+    logger.info(f"Loading Inst2Vec tokenizer from {tokenizer_id}")
+    tokenizer = Inst2VecTokenizer.from_pretrained(tokenizer_id)
+    logger.info(f"Tokenizer vocab size: {len(tokenizer)}")
     
-    def load_tokenizer(self):
-        tokenizer_id = self.cfg.tokenizer_id
-        self.logger.info(f"Loading Inst2Vec tokenizer from {tokenizer_id}")
-        self.tokenizer = Inst2VecTokenizer.from_pretrained(tokenizer_id)
-        self.logger.info(f"Tokenizer vocab size: {len(self.tokenizer)}")
+    # Load model
+    logger.info(f"Loading model from {model_id}")
+    model = AutoModelForMaskedLM.from_pretrained(model_id)
     
-    def load_model(self):
-        """Load model and resize token embeddings."""
-        self.logger.info(f"Loading model from {self.cfg.model_id}")
-        self.model = AutoModelForMaskedLM.from_pretrained(self.cfg.model_id)
-        
-        old_vocab_size = self.model.get_input_embeddings().num_embeddings
-        self.logger.info(f"Original model vocab size: {old_vocab_size}")
-        self.model.resize_token_embeddings(len(self.tokenizer))
-        self.logger.info(f"Resized model vocab to {len(self.tokenizer)}")
-        
-        self.model.config.vocab_size = len(self.tokenizer)
-        self.logger.info(f"Updated model config vocab_size to {self.model.config.vocab_size}")
+    # Resize token embeddings
+    old_vocab_size = model.get_input_embeddings().num_embeddings
+    logger.info(f"Original model vocab size: {old_vocab_size}")
+    model.resize_token_embeddings(len(tokenizer))
+    logger.info(f"Resized model vocab to {len(tokenizer)}")
     
-    def tokenize_function(self, examples) -> Dict[str, Any]:
-        return self.tokenizer(
-            examples['llvm'],
-            max_length=self.cfg.max_length, 
+    # 同步 tokenizer 的特殊 token id 到模型配置
+    model.config.vocab_size = len(tokenizer)
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.bos_token_id = tokenizer.bos_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    model.config.cls_token_id = tokenizer.cls_token_id
+    model.config.sep_token_id = tokenizer.sep_token_id
+    logger.info(f"Synced special token ids: pad={model.config.pad_token_id}, bos={model.config.bos_token_id}, eos={model.config.eos_token_id}")
+    
+    return model, tokenizer
+
+
+def main():
+    args = parse_args()
+    cfg = load_config(args.config)
+    
+    # Config values
+    data_dir = cfg["data"]["data_dir"]
+    max_length = cfg["data"]["max_length"]
+    base_work_dir = cfg["output"]["base_work_dir"]
+    mlm_probability = cfg["mlm"]["mlm_probability"]
+    args_cfg = cfg["training_args"]
+    
+    # Create work directory
+    time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    work_dir = os.path.join(base_work_dir, time_str)
+    os.makedirs(work_dir, exist_ok=True)
+    
+    # Setup logging
+    logger = get_logger(work_dir)
+    logger.info(f"Work directory created at {work_dir}")
+    
+    # Load model and tokenizer
+    model, tokenizer = get_model_and_tokenizer(cfg, logger)
+    
+    # Load dataset
+    logger.info(f"Loading dataset from {data_dir}")
+    dataset = load_from_disk(data_dir)
+    
+    def tokenize_fn(example):
+        return tokenizer(
+            example['llvm'],
+            max_length=max_length,
             truncation=True,
             padding=True,
             return_tensors="pt"
         )
     
-    def tokenize_dataset(self, remove_columns: Optional[list] = None, **kwargs):
-        self.logger.info(f"Tokenizing dataset with max_length={self.cfg.max_length}")
-        
-        self.tokenized_data = self.dataset.map(
-            self.tokenize_function,
-            batched=False,
-            num_proc=kwargs.get("num_proc", 32),
-            remove_columns=remove_columns or ['llvm', 'label']
-        )
-        self.logger.info("Tokenization finished")
+    # Tokenize dataset
+    logger.info(f"Tokenizing dataset with max_length={max_length}")
+    tokenized_data = dataset.map(
+        tokenize_fn,
+        batched=False,
+        num_proc=32,
+        remove_columns=['llvm', 'label']
+    )
+    logger.info("Tokenization finished")
     
-    def setup_trainer(self):
-        self.logger.info("Initializing Trainer")
-        
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=self.tokenizer,
-            mlm=True,
-            mlm_probability=self.cfg.mlm_probability,
-            pad_to_multiple_of=8
-        )
-        
-        args_cfg = self.cfg.training_args
-        training_args = TrainingArguments(
-            output_dir=self.work_dir,
-            logging_dir=self.work_dir,
-            **args_cfg
-        )
-        
-        self.trainer = Trainer(
-            model=self.model,
-            args=training_args,
-            data_collator=data_collator,
-            train_dataset=self.tokenized_data['train'],
-            eval_dataset=self.tokenized_data.get('test')
-        )
+    # Data collator for MLM
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        mlm=True,
+        mlm_probability=mlm_probability,
+        pad_to_multiple_of=8
+    )
     
-    def train(self):
-        self.logger.info("Starting MLM training")
-        self.trainer.train()
+    # Training arguments
+    training_args = TrainingArguments(
+        output_dir=work_dir,
+        logging_dir=work_dir,
+        **args_cfg
+    )
     
-    def save_model(self):
-        final_model_dir = os.path.join(self.work_dir, "final_model")
-        self.logger.info(f"Saving final model and tokenizer to {final_model_dir}")
-        
-        self.model.save_pretrained(final_model_dir)
-        if hasattr(self.tokenizer, 'save_pretrained'):
-            self.tokenizer.save_pretrained(final_model_dir)
-        
-        self.logger.info(f"Model and tokenizer saved to {final_model_dir}")
+    # Trainer
+    logger.info("Initializing Trainer")
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=tokenized_data['train'],
+        eval_dataset=tokenized_data.get('test')
+    )
     
-    def run(self, remove_columns: Optional[list] = None, **tokenize_kwargs):
-        self.load_tokenizer()
-        self.load_dataset()
-        self.tokenize_dataset(remove_columns=remove_columns, **tokenize_kwargs)
-        self.load_model()
-        self.setup_trainer()
-        self.train()
-        self.save_model()
-
-
-def main():
-    args = parse_args()
-    trainer = InstBertMLMTrainer(args.config)
-    trainer.run(remove_columns=['llvm', 'label'], num_proc=32)
+    # Train
+    logger.info("Starting MLM training")
+    trainer.train()
+    
+    # Save model
+    final_model_dir = os.path.join(work_dir, "final_model")
+    logger.info(f"Saving model and tokenizer to {final_model_dir}")
+    model.save_pretrained(final_model_dir)
+    tokenizer.save_pretrained(final_model_dir)
+    logger.info("Training complete")
 
 
 if __name__ == "__main__":

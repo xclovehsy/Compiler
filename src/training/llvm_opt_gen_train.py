@@ -8,6 +8,7 @@ from transformers import (
     TrainingArguments,
     EncoderDecoderModel,
     AutoModel,
+    AutoConfig,
     GPT2LMHeadModel,
     GPT2Config
 )
@@ -34,11 +35,23 @@ def get_model(cfg, logger):
     opti_seq_tokenizer_id = cfg["model"]["opti_seq_tokenizer_id"]
     gpt2_cfg = cfg['gpt2_config']
     
-    # Encoder
-    logger.info(f"Loading encoder from {instbert_id}")
-    encoder = AutoModel.from_pretrained(instbert_id)
+    # 先加载 tokenizer 以获取正确的特殊 token id
     logger.info(f"Loading Inst2Vec tokenizer from {inst2vec_tokenizer_id}")
     inst2vec_tokenizer = Inst2VecTokenizer.from_pretrained(inst2vec_tokenizer_id)
+    
+    # Encoder - 加载配置并修复特殊 token id
+    logger.info(f"Loading encoder from {instbert_id}")
+    encoder_config = AutoConfig.from_pretrained(instbert_id)
+    
+    # 同步 tokenizer 的特殊 token id 到模型配置
+    encoder_config.pad_token_id = inst2vec_tokenizer.pad_token_id
+    encoder_config.bos_token_id = inst2vec_tokenizer.bos_token_id
+    encoder_config.eos_token_id = inst2vec_tokenizer.eos_token_id
+    encoder_config.cls_token_id = inst2vec_tokenizer.cls_token_id
+    encoder_config.sep_token_id = inst2vec_tokenizer.sep_token_id
+    logger.info(f"Synced special token ids: pad={encoder_config.pad_token_id}, bos={encoder_config.bos_token_id}, eos={encoder_config.eos_token_id}")
+    
+    encoder = AutoModel.from_pretrained(instbert_id, config=encoder_config)
     
     # Decoder
     logger.info(f"Loading OptiSeq tokenizer from {opti_seq_tokenizer_id}")
