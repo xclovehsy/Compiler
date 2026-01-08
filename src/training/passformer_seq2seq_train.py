@@ -12,7 +12,7 @@ from transformers import (
     GPT2LMHeadModel,
     GPT2Config
 )
-from datasets import load_from_disk
+from datasets import load_from_disk, DatasetDict
 
 from src.config import load_config
 from src.utils.utils import get_logger
@@ -95,6 +95,13 @@ def main():
     # Load dataset
     logger.info(f"Loading dataset from {data_dir}")
     dataset = load_from_disk(data_dir)
+    
+    # 只取前100条用于测试
+    logger.info("Limiting dataset to first 100 samples for testing")
+    if isinstance(dataset, DatasetDict):
+        dataset = DatasetDict({split: ds.select(range(min(100, len(ds)))) for split, ds in dataset.items()})
+    else:
+        dataset = dataset.select(range(min(100, len(dataset))))
     
     def tokenize_fn(example):
         llvm_ir = example['LLVM_IR']
