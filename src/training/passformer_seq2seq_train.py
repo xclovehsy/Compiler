@@ -67,6 +67,7 @@ def main():
     data_dir = cfg["data"]["data_dir"]
     encoder_maxlen = cfg["data"]["encoder_maxlen"]
     decoder_maxlen = cfg["data"]["decoder_maxlen"]
+    tokenized_data_dir = cfg["data"].get("tokenized_data_dir", None)
     base_work_dir = cfg["output"]["base_work_dir"]
     args_cfg = cfg["training_args"]
     
@@ -82,52 +83,64 @@ def main():
     # Load model and tokenizers
     model, inst2vec_tokenizer, opti_seq_tokenizer = get_model(cfg, logger)
     
-    # Load dataset
-    logger.info(f"Loading dataset from {data_dir}")
-    dataset = load_from_disk(data_dir)
-    
-    # 只取前100条用于测试
-    logger.info("Limiting dataset to first 100 samples for testing")
-    if isinstance(dataset, DatasetDict):
-        dataset = DatasetDict({split: ds.select(range(min(100, len(ds)))) for split, ds in dataset.items()})
+    # 尝试加载已 tokenize 的数据集
+    if tokenized_data_dir and os.path.exists(tokenized_data_dir):
+        logger.info(f"Loading tokenized dataset from {tokenized_data_dir}")
+        tokenized_data = load_from_disk(tokenized_data_dir)
     else:
-        dataset = dataset.select(range(min(100, len(dataset))))
-    
-    def tokenize_fn(example):
-        llvm_ir = example['LLVM_IR']
-        encoder_outputs = inst2vec_tokenizer(
-            llvm_ir, 
-            truncation=True,
-            padding="max_length",
-            max_length=encoder_maxlen,
-            return_tensors='pt'
-        )
+        # Load dataset
+        logger.info(f"Loading dataset from {data_dir}")
+        dataset = load_from_disk(data_dir)
+        
+        # 只取前100条用于测试
+        # logger.info("Limiting dataset to first 100 samples for testing")
+        # if isinstance(dataset, DatasetDict):
+        #     dataset = DatasetDict({split: ds.select(range(min(100, len(ds)))) for split, ds in dataset.items()})
+        # else:
+        #     dataset = dataset.select(range(min(100, len(dataset))))
+        
+        def tokenize_fn(example):
+            llvm_ir = example['LLVM_IR']
+            encoder_outputs = inst2vec_tokenizer(
+                llvm_ir, 
+                truncation=True,
+                padding="max_length",
+                max_length=encoder_maxlen,
+                return_tensors='pt'
+            )
 
-        commandline = example['Commandline']
-        decoder_outputs = opti_seq_tokenizer(
-            commandline,
-            truncation=True,
-            padding=True,
-            max_length=decoder_maxlen,
-        )
+            commandline = example['Commandline']
+            decoder_outputs = opti_seq_tokenizer(
+                commandline,
+                truncation=True,
+                padding=True,
+                max_length=decoder_maxlen,
+            )
 
-        return {
-            'input_ids': encoder_outputs['input_ids'].squeeze(0),
-            'attention_mask': encoder_outputs['attention_mask'].squeeze(0),
-            'labels': decoder_outputs['input_ids'].squeeze(0)
-        }
-    
-    logger.info("Tokenizing dataset")
-    remove_columns = [
-        'Benchmark', 'CpuInfo', 'IrInstructionCountO0', 
-        'IrInstructionCountO3', 'IrInstructionCountOz', 
-        'InstCount', 'Autophase', 'Reward', 'LLVM_IR', 'Commandline'
-    ]
-    tokenized_data = dataset.map(
-        tokenize_fn, 
-        batched=False,
-        remove_columns=remove_columns
-    )
+            return {
+                'input_ids': encoder_outputs['input_ids'].squeeze(0),
+                'attention_mask': encoder_outputs['attention_mask'].squeeze(0),
+                'labels': decoder_outputs['input_ids'].squeeze(0)
+            }
+        
+        logger.info("Tokenizing dataset")
+        remove_columns = [
+            'Benchmark', 'CpuInfo', 'IrInstructionCountO0', 
+            'IrInstructionCountO3', 'IrInstructionCountOz', 
+            'InstCount', 'Autophase', 'Reward', 'LLVM_IR', 'Commandline'
+        ]
+        tokenized_data = dataset.map(
+            tokenize_fn, 
+            batched=False,
+            remove_columns=remove_columns
+        )
+        
+        # 保存 tokenized 数据集
+        if tokenized_data_dir:
+            logger.info(f"Saving tokenized dataset to {tokenized_data_dir}")
+            os.makedirs(tokenized_data_dir, exist_ok=True)
+            tokenized_data.save_to_disk(tokenized_data_dir)
+            logger.info("Tokenized dataset saved")
     
     # Training arguments
     training_args = TrainingArguments(

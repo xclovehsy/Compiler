@@ -8,6 +8,7 @@ model:
 
 data:
   data_dir: /home/xucong24/Compiler/datasets/llvm_opti_seq
+  tokenized_data_dir: /home/xucong24/Compiler/datasets/llvm_opti_seq_passformer_tokenized  # 可选，tokenize 后的数据集保存/加载路径
   encoder_maxlen: 512
   decoder_maxlen: 128
 
