@@ -2,7 +2,7 @@
 # 使用 AutoTokenizer (HuggingFace) 作为 encoder tokenizer
 
 model:
-  instbert_id: /home/xucong24/Compiler/work_dirs/instbert_poj104_mlm/20260106_152024/checkpoint-27672      # 预训练的 ModernBERT/InstBERT 模型路径
+  instbert_id: /home/xucong24/Compiler/work_dirs/instbert_poj104_mlm/20260106_152024/final_model      # 预训练的 ModernBERT/InstBERT 模型路径
   inst2vec_tokenizer_id: /home/xucong24/Compiler/checkpoints/Inst2VecTokenizer  # Inst2Vec tokenizer 路径
   opti_seq_tokenizer_id: /home/xucong24/Compiler/checkpoints/OptiSeqTokenizer   # 优化序列 tokenizer 路径
 
