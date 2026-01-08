@@ -10,4 +10,4 @@
 # inst2vec_modernbert poj104 mlm train
 # python -m src.training.instbert_mlm_trainer --config /home/xucong24/Compiler/configs/instbert_poj104_mlm.yaml
 
-python -m src.training.optseq_gen_train --config /home/xucong24/Compiler/configs/optseq_gen_train.yaml
+python -m src.training.passformer_seq2seq_train --config /home/xucong24/Compiler/configs/passformer_optseq_seq2seq.yaml
