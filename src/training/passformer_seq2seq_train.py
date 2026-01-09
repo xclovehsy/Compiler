@@ -116,11 +116,15 @@ def main():
                 padding=True,
                 max_length=decoder_maxlen,
             )
+            
+            # 将 padding 位置的 labels 设为 -100，使其在 loss 计算中被忽略
+            labels = decoder_outputs['input_ids'].squeeze(0).clone()
+            labels[labels == opti_seq_tokenizer.pad_token_id] = -100
 
             return {
                 'input_ids': encoder_outputs['input_ids'].squeeze(0),
                 'attention_mask': encoder_outputs['attention_mask'].squeeze(0),
-                'labels': decoder_outputs['input_ids'].squeeze(0)
+                'labels': labels
             }
         
         logger.info("Tokenizing dataset")
