@@ -81,10 +81,17 @@ def main():
         # 提交任务，这是个生成器，每个元素是(index, row)
         futures = {executor.submit(process_row, item): item[0] for item in df.iterrows()}
 
+        # 按原始索引顺序收集结果，而不是按完成顺序
+        results_dict = {}
         for future in tqdm(as_completed(futures), total=len(futures)):
+            idx = futures[future]
             result = future.result()
             if result is not None:
-                data_list.append(result)
+                results_dict[idx] = result
+        
+        # 按原始顺序排序
+        for idx in sorted(results_dict.keys()):
+            data_list.append(results_dict[idx])
 
     print(f"Processed {len(data_list)} rows")
 
